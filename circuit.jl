@@ -36,7 +36,7 @@ To Do:
 >implement gradient descent on the parameters of the sub-circuits using finite difference method
 >implement gradient descent on the parameters of the sub-circuits using backpropagation
 
->intigate with the flux.jl module to implement the quantum neural network
+>intigrate with the flux.jl module to implement the quantum neural network
 
 """
 struct Circuit
