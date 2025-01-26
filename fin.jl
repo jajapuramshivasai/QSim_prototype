@@ -1,6 +1,11 @@
 #issure:replace "I" with "-" #status:fixed
 #issure:replace "⨁" with "⊕" or "⨁"
+
+#implement HQNN and quantum transformer
+using BenchmarkTools
 using LinearAlgebra
+using Plots
+
 struct QuantumCircuit
     gates::Vector{Vector{String}}
     num_qubits::Int
@@ -41,6 +46,19 @@ function H(circuit::QuantumCircuit,qubit::Int)
     else
         add_layer!(circuit)
         circuit.gates[layer+1][qubit] = "H"
+    end
+
+end
+
+function X(circuit::QuantumCircuit,qubit::Int)
+    layer = length(circuit.gates)
+ 
+    Condition::Bool = (circuit.gates[layer][qubit] == "-") #fix 2
+    if Condition
+        circuit.gates[layer][qubit] = "X"
+    else
+        add_layer!(circuit)
+        circuit.gates[layer+1][qubit] = "X"
     end
 
 end
@@ -163,27 +181,78 @@ function print_matrix(matrix::Matrix{Complex{Float64}})
     end
 end
 
-function compute_layer(circuit::QuantumCircuit, layer::Int) #test and verify this function
+function print_state(state_vector::Vector{ComplexF64})
+    n = Int(log2(length(state_vector)))
+    println("State representation:")
+    for i in 0:(length(state_vector)-1)
+        amplitude = state_vector[i+1]
+        if abs(amplitude) > 1e-10  # Only print non-zero amplitudes
+            binary = lpad(string(i, base=2), n, '0')
+            reversed_binary = reverse(binary)
+            println("|$reversed_binary⟩: $amplitude")
+        end
+    end
+end
+
+# function plot_probabilities(state_vector::Vector{ComplexF64})
+#     n = Int(log2(length(state_vector)))
+#     probabilities = abs2.(state_vector)
+#     labels = [reverse(lpad(string(i, base=2), n, '0')) for i in 0:(length(state_vector)-1)]
+#     bar(labels, probabilities, xlabel="State", ylabel="Probability", title="State Probabilities")
+# end
+function plot_probabilities(state_vector::Vector{ComplexF64},name::String="State Probabilities")
+    n = Int(log2(length(state_vector)))
+    println("State representation:")
+    probabilities = []
+    labels = []
+    for i in 0:(length(state_vector)-1)
+        amplitude = state_vector[i+1]
+        if abs(amplitude) > 1e-10  # Only print non-zero amplitudes
+            binary = lpad(string(i, base=2), n, '0')
+            reversed_binary = reverse(binary)
+            # println("|$reversed_binary⟩: $amplitude")
+            # probabilities.push(abs(amplitude)^2)
+            push!(probabilities, abs(amplitude)^2)
+            push!(labels, "|$reversed_binary⟩")
+            # labels.push("|$reversed_binary⟩")
+        end
+    end
+    bar(labels, probabilities, xlabel="State", ylabel="Probability", title=name, legend=false)
+end
+
+#make a distributed version of compute_layer
+
+function compute_layer(circuit::QuantumCircuit, layer::Int) #test and verify this function >> Verified
     U::Matrix{Complex{Float64}} = I(1)   #add R gate to this
     qubit = 1
     while qubit <= circuit.num_qubits
         gate = circuit.gates[layer][qubit]
-        if gate == "H"
-            U = kron(U, [1 1; 1 -1]/sqrt(2))
+        if gate == "-"
+            U = kron(U, [1 0; 0 1])
+            
         elseif gate == "X"
             U = kron(U, [0 1; 1 0])
-        elseif gate == "-"#fix 6
-            U = kron(U, [1 0; 0 1])
+        elseif gate == "H"#fix 6
+            U = kron(U, [1 1; 1 -1]/sqrt(2))
+
+        elseif startswith(gate, "R(") #Verify this
+            params = split(gate[3:end-1], ",")
+            theta = parse(Float64, params[1])
+            phi = parse(Float64, params[2])
+            lambda = parse(Float64, params[3])
+            R = [cos(theta/2) -im*exp(im*lambda)*sin(theta/2); im*exp(im*phi)*sin(theta/2) exp(im*(phi+lambda))*cos(theta/2)]
+            U = kron(U, R)
+        
         elseif gate[1] == '⨁'
             g = parse(Int, gate[4:end]) # change 2 to 4 to make it work
             d = g
             U = kron(U, XC(d))
-            qubit += d+2
+            qubit += d
         elseif gate[1] == '●'
             g = parse(Int, gate[4:end]) 
             d = g
             U = kron(U, CX(d))
-            qubit += d+2
+            qubit += d
         else
             error("Unknown gate: $gate")
         end
@@ -192,27 +261,81 @@ function compute_layer(circuit::QuantumCircuit, layer::Int) #test and verify thi
     return U
 end
 
+function initialize_statevector(n::Int, m::Int)::Vector{ComplexF64}
+    size = 1<<n
+    result = zeros(ComplexF64, size)
+    result[m+1] = 1.0
+    return result
+end
+function compute_sv(circuit::QuantumCircuit, state::Vector{ComplexF64})
+    for layer in 1:length(circuit.gates)
+        U = compute_layer(circuit, layer)
+        state .= U * state
+    end
+    
+end
+
+function compute_circ(circuit::QuantumCircuit)
+    A::Matrix{ComplexF64} = I(1<<circuit.num_qubits)
+    for layer in 1:length(circuit.gates)
+        U = compute_layer(circuit, layer)
+        A .= U * A
+    end
+    return A
+    
+end
+
 # Example usage
-qc = QuantumCircuit(2)
+# num_qubits =2
+# state = initialize_statevector(num_qubits, 0)
+# qc = QuantumCircuit(num_qubits)
 # set_gate!(qc, 1, 1, "H")
 # set_gate!(qc, 1, 2, "-")
 
 # # set_gate!(qc, 2, 1, "CNOT")
 # set_gate!(qc, 2, 2, "X")
-H(qc, 1)
-CNOT(qc, 1, 2)
+# H(qc, 1)
+# CNOT(qc, 1, 2)
+# CNOT(qc, 1, 2)
+# CNOT(qc, 3, 2)
 # CNOT(qc, 3, 4)
-# R(qc, 1, 0.1, 0.2, 0.3)
+# R(qc, 1, 3.141, 0.0, 0.0)
 # H(qc, 4)
 # CNOT(qc, 4, 1)
 # H(qc, 4)
-print_circuit(qc)
-A = compute_layer(qc, 2)
+# print_circuit(qc)
+# A = compute_layer(qc, 2)
 # print_matrix(A)
-print(A)
-println("⨁123"[1])
-println("⨁123"[1] == "⨁")
-println("⨁123"[1] == '⨁')
+# A = compute_circ(qc)
+# print_matrix(A)
+# compute_sv(qc, state)
+# print(state)
+# print_state(state)
+# print(A)
+# println("⨁123"[1])
+# println("⨁123"[1] == "⨁")
+# println("⨁123"[1] == '⨁')
 # qc = nothing # deleting QuantumCircuit freeing memory
 
 # println(("Allo le monde"))
+
+#start of testing 
+
+#Task 1 GHZ state > |00 ..0> --> (  |00 ..0> +|11 ..1>  ) /sqrt(2) note |Qn , ... Q2,Q1>
+function GHZ(num_qubits::Int)
+    state = initialize_statevector(num_qubits, 0)
+    qc = QuantumCircuit(num_qubits)
+
+
+    H(qc, 1)
+    for i in 2:num_qubits
+        CNOT(qc, 1, i)
+    end
+    print_circuit(qc)
+    compute_sv(qc, state)
+    print_state(state)
+    # plot_probabilities(state)
+    
+end
+
+@time GHZ(14)
