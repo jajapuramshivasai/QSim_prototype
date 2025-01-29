@@ -1,27 +1,80 @@
-#issure:replace "I" with "-" #status:fixed
-#issure:replace "⨁" with "⊕" or "⨁"
+#problem: time isnt improving seems like multithreading is not working on mac
+#issue:replace "I" with "-" #status:fixed
+#issue:replace "⨁" with "⊕" or "⨁" #status:fixed
+#issue:change fp64 to fp32 or fp16
+#issue:replace c = A*B with mul!(C, A, B) #
+#issue:add @inbounds to all for loops
+#task: implemnt universal instruction set {U,CU,MCU} and if U coressponds to any known gate then print them as known gate in print_circuit_new
+#>Example: U
 
 #implement HQNN and quantum transformer
 using BenchmarkTools
+using Profile
 using LinearAlgebra
 using Plots
+# using DistributedArrays
+using SparseArrays
+using Hwloc
+# Hwloc.num_physical_cores()
+# BLAS.set_num_threads(4)
+"""
+Hwloc.num_physical_cores() = 8
+nthreads() = 1
+pennylane limit 26 qubits , Time = 20 seconds
+julia naive limit 14 qubits, Time = 38 seconds
+
+
+naive approach 
+
+qubit_count | complexity(single core)                                          | complexity(parallel 4 cores)+optimized
+---------------------------------------------------------------------------------------------------------------------------------------------------
+6           | 0.000426 seconds (266 allocations: 804.758 KiB)                  |     
+7           | 0.000704 seconds (343 allocations: 3.437 MiB)                    |         
+8           | 0.002305 seconds (419 allocations: 15.020 MiB)                   |
+9           | 0.013136 seconds (500 allocations: 65.312 MiB, 25.68% gc time)   |
+10          | 0.143950 seconds (586 allocations: 282.401 MiB, 71.70% gc time)  |
+11          | 0.591260 seconds (677 allocations: 1.186 GiB, 67.93% gc time)    |
+12          | 1.744083 seconds (773 allocations: 5.077 GiB, 44.98% gc time)    |
+13          | 9.349812 seconds (874 allocations: 21.641 GiB, 13.41% gc time)   |
+14          | 40.137828 seconds (980 allocations: 91.892 GiB, 4.96% gc time)
+
+
+"""
 
 struct QuantumCircuit
     gates::Vector{Vector{String}}
     num_qubits::Int
-    ops::Vector{Vector{Matrix{Complex{Float64}}}}
     function QuantumCircuit(num_qubits::Int)
-        circuit = new(Vector{Vector{String}}(), num_qubits, Vector{Vector{Matrix{Complex{Float64}}}}(undef, num_qubits))
+        circuit = new(Vector{Vector{String}}(), num_qubits)
         add_layer!(circuit)
         return circuit
     end
 end
 
-function set_op!(circuit::QuantumCircuit, qubit::Int, op::Matrix{Complex{Float64}})
-    if circuit.ops[qubit] === nothing
-        circuit.ops[qubit] = Stack{Matrix{Complex{Float64}}}()
+using CSV
+using DataFrames
+
+function save_circuit_to_csv(circuit::QuantumCircuit, filename::String)
+    data = []
+    for (layer_idx, layer) in enumerate(circuit.gates)
+        for (qubit_idx, gate) in enumerate(layer)
+            push!(data, (layer_idx, qubit_idx, gate))
+        end
     end
-    push!(circuit.ops[qubit], op)
+    df = DataFrame(data, [:Layer, :Qubit, :Gate])
+    CSV.write(filename, df)
+end
+function load_circuit_from_csv(filename::String)::QuantumCircuit
+    df = CSV.read(filename, DataFrame)
+    num_qubits = maximum(df.Qubit) + 1
+    circuit = QuantumCircuit(num_qubits)
+    for row in eachrow(df)
+        layer = row.Layer
+        qubit = row.Qubit
+        gate = row.Gate
+        set_gate!(circuit, layer, qubit, gate)
+    end
+    return circuit
 end
 
 function add_layer!(circuit::QuantumCircuit)
@@ -92,13 +145,13 @@ function CNOT(circuit::QuantumCircuit,control::Int, target::Int)
         end
         if to_apply_nxt_layer
             add_layer!(circuit)
-            circuit.gates[layer+1][target] = "⨁$d"
+            circuit.gates[layer+1][target] = "⊕$d"
             circuit.gates[layer+1][control] = "●$d"
             for i in control+1:target-1
                 circuit.gates[layer+1][i] = "|"
             end
         else
-            circuit.gates[layer][target] = "⨁$d"
+            circuit.gates[layer][target] = "⊕$d"
             circuit.gates[layer][control] = "●$d"
             for i in control+1:target-1
                 circuit.gates[layer][i] = "|"
@@ -116,13 +169,13 @@ function CNOT(circuit::QuantumCircuit,control::Int, target::Int)
         if to_apply_nxt_layer
             add_layer!(circuit)
             circuit.gates[layer+1][control] = "●$d"
-            circuit.gates[layer+1][target] = "⨁$d"
+            circuit.gates[layer+1][target] = "⊕$d"
             for i in target+1:control-1
                 circuit.gates[layer+1][i] = "|"
             end
         else
             circuit.gates[layer][control] = "●$d"
-            circuit.gates[layer][target] = "⨁$d"
+            circuit.gates[layer][target] = "⊕$d"
             for i in target+1:control-1
                 circuit.gates[layer][i] = "|"
             end
@@ -133,6 +186,8 @@ function CNOT(circuit::QuantumCircuit,control::Int, target::Int)
         error("Control and target qubits are same")
     end
 end
+
+
 
 function identity_(qubits::Int)::Matrix{Complex{Float64}}
     n = 1 << qubits
@@ -156,16 +211,20 @@ function XC(d::Int)::Matrix{Complex{Float64}} #correst >verified
     return U
     
 end
+#new proposed instruction set
 
 function print_circuit(circuit::QuantumCircuit)
-    for qubit in 1:circuit.num_qubits
-        print("Q$qubit: ")
-        for layer in circuit.gates
+    max_qubit_digits = length(string(circuit.num_qubits))
+    @inbounds for qubit in 1:circuit.num_qubits
+        qubit_str = lpad("Q$qubit:", max_qubit_digits + 2)
+        print(qubit_str, " ")
+        @inbounds for layer in circuit.gates
             print(layer[qubit][1], "--")
         end
         println()
     end
 end
+
 function print_matrix(matrix::Matrix{Complex{Float64}})
     for row in 1:size(matrix, 1)
         for col in 1:size(matrix, 2)
@@ -184,7 +243,7 @@ end
 function print_state(state_vector::Vector{ComplexF64})
     n = Int(log2(length(state_vector)))
     println("State representation:")
-    for i in 0:(length(state_vector)-1)
+    @inbounds for i in 0:(length(state_vector)-1)
         amplitude = state_vector[i+1]
         if abs(amplitude) > 1e-10  # Only print non-zero amplitudes
             binary = lpad(string(i, base=2), n, '0')
@@ -205,7 +264,7 @@ function plot_probabilities(state_vector::Vector{ComplexF64},name::String="State
     println("State representation:")
     probabilities = []
     labels = []
-    for i in 0:(length(state_vector)-1)
+    @inbounds for i in 0:(length(state_vector)-1)
         amplitude = state_vector[i+1]
         if abs(amplitude) > 1e-10  # Only print non-zero amplitudes
             binary = lpad(string(i, base=2), n, '0')
@@ -225,7 +284,7 @@ end
 function compute_layer(circuit::QuantumCircuit, layer::Int) #test and verify this function >> Verified
     U::Matrix{Complex{Float64}} = I(1)   #add R gate to this
     qubit = 1
-    while qubit <= circuit.num_qubits
+    @inbounds while qubit <= circuit.num_qubits
         gate = circuit.gates[layer][qubit]
         if gate == "-"
             U = kron(U, [1 0; 0 1])
@@ -261,6 +320,8 @@ function compute_layer(circuit::QuantumCircuit, layer::Int) #test and verify thi
     return U
 end
 
+
+
 function initialize_statevector(n::Int, m::Int)::Vector{ComplexF64}
     size = 1<<n
     result = zeros(ComplexF64, size)
@@ -268,21 +329,30 @@ function initialize_statevector(n::Int, m::Int)::Vector{ComplexF64}
     return result
 end
 function compute_sv(circuit::QuantumCircuit, state::Vector{ComplexF64})
-    for layer in 1:length(circuit.gates)
+    @inbounds for layer in 1:length(circuit.gates)
         U = compute_layer(circuit, layer)
         state .= U * state
+        # mul!(state,U,state)
     end
     
 end
 
 function compute_circ(circuit::QuantumCircuit)
     A::Matrix{ComplexF64} = I(1<<circuit.num_qubits)
-    for layer in 1:length(circuit.gates)
+    @inbounds for layer in 1:length(circuit.gates)
         U = compute_layer(circuit, layer)
         A .= U * A
+        # mul!(A,U,A)
     end
     return A
     
+end
+function get_memory_size(obj)
+    # Use @allocated macro to measure memory allocation during evaluation
+    mem = @allocated begin
+        obj
+    end
+    return mem
 end
 
 # Example usage
@@ -323,19 +393,58 @@ end
 
 #Task 1 GHZ state > |00 ..0> --> (  |00 ..0> +|11 ..1>  ) /sqrt(2) note |Qn , ... Q2,Q1>
 function GHZ(num_qubits::Int)
+  
+
+    println("inilizing step")
     state = initialize_statevector(num_qubits, 0)
     qc = QuantumCircuit(num_qubits)
-
-
+    # println(state)
     H(qc, 1)
-    for i in 2:num_qubits
+    for i in 2:num_qubits  #first check point
         CNOT(qc, 1, i)
     end
-    print_circuit(qc)
-    compute_sv(qc, state)
-    print_state(state)
-    # plot_probabilities(state)
+    # mem = @allocated begin
+    #     qc
+    # end
+    # println("Memory allocated for QuantumCircuit: $mem bytes")
+
+    # ops::Vector{Matrix{Complex{Float64}}} = []
+    # @time for i in 1:num_qubits #second check point
+    #     push!(ops, compute_layer(qc, i))
+    # end
     
+    # @time for i in 1:num_qubits #third check point
+    #     state .= ops[i] * state
+    # # end
+    # print("compute_step:")
+    # V =compute_circ(qc)
+    # print_matrix(V)
+    @time compute_sv(qc, state)
+
+    # print_circuit(qc) #fourth check point
+    # save_circuit_to_csv(qc, "GHZ(25).csv")
+    # print_state(state)
+    # plot_probabilities(state)
+    # qc = nothing
+    print_circuit(qc)
+    # empty!(ops)
+    # println(state)
+    # print_state(state)
+    qc = nothing
+    GC.gc()
 end
 
-@time GHZ(14)
+# struct sv_tensor
+#     state::Vector{ComplexF64}
+#     qc::QuantumCircuit
+#     ops::Vector{Matrix{Complex{Float64}}}
+# end
+    
+
+# Profile.clear()
+GHZ(9)
+
+# Profile.print(maxdepth=10, mincount=10)
+# GHZ(10)
+# sleep(10)
+# exit()
