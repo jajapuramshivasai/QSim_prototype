@@ -1,5 +1,5 @@
->imppemnt unit testss
->remove stack operations> directly do multplication
->check and benchmark SIMD on workstation
->implement distribute compute
+1>imppemnt unit testss
+3remove stack operations> directly do multplication
+2>check and benchmark SIMD on workstation
+4implement distribute compute
 
