@@ -1,0 +1,398 @@
+_julia_compute_sv_9477:                 ; @julia_compute_sv_9477
+; Function Signature: compute_sv(Main.QuantumCircuit, Array{Base.Complex{Float64}, 1})
+; ┌ @ /Users/shivasai/Desktop/ProtoSim_main/fin.jl:332 within `compute_sv`
+; %bb.0:                                ; %top
+        ;DEBUG_VALUE: compute_sv:circuit <- [DW_OP_deref] [$x0+0]
+; │ @ /Users/shivasai/Desktop/ProtoSim_main/fin.jl within `compute_sv`
+        ;DEBUG_VALUE: compute_sv:state <- [DW_OP_deref] $x1
+        sub     sp, sp, #192
+        stp     x28, x27, [sp, #96]             ; 16-byte Folded Spill
+        stp     x26, x25, [sp, #112]            ; 16-byte Folded Spill
+        stp     x24, x23, [sp, #128]            ; 16-byte Folded Spill
+        stp     x22, x21, [sp, #144]            ; 16-byte Folded Spill
+        stp     x20, x19, [sp, #160]            ; 16-byte Folded Spill
+        stp     x29, x30, [sp, #176]            ; 16-byte Folded Spill
+        mov     x19, x1
+        ;DEBUG_VALUE: compute_sv:state <- [DW_OP_deref] $x19
+        mov     x20, x0
+; │ @ /Users/shivasai/Desktop/ProtoSim_main/fin.jl:332 within `compute_sv`
+        ;DEBUG_VALUE: compute_sv:circuit <- [DW_OP_deref] [$x20+0]
+        movi.2d v0, #0000000000000000
+        str     q0, [sp, #48]
+        str     q0, [sp, #32]
+        str     q0, [sp, #16]
+        mov     x8, #45420
+        movk    x8, #32891, lsl #16
+        movk    x8, #1, lsl #32
+        mov     w0, #261
+        blr     x8
+        mov     w8, #16
+        stp     x0, x8, [sp, #8]                ; 8-byte Folded Spill
+        ldr     x8, [x0]
+        str     x8, [sp, #24]
+        add     x8, sp, #16
+        str     x8, [x0]
+; │ @ /Users/shivasai/Desktop/ProtoSim_main/fin.jl within `compute_sv`
+        ;DEBUG_VALUE: compute_sv:state <- [DW_OP_deref] 0
+; │ @ /Users/shivasai/Desktop/ProtoSim_main/fin.jl:333 within `compute_sv`
+; │┌ @ Base.jl:49 within `getproperty`
+        ldr     x8, [x20]
+; │└
+; │┌ @ essentials.jl:11 within `length`
+        ldr     x8, [x8, #16]
+; │└
+; │┌ @ range.jl:5 within `Colon`
+; ││┌ @ range.jl:408 within `UnitRange`
+; │││┌ @ range.jl:419 within `unitrange_last`
+        cmp     x8, #0
+        csel    x26, x8, xzr, gt
+; │└└└
+        cmp     x8, #1
+        b.lt    LBB0_24
+; %bb.1:                                ; %L21.preheader
+        mov     w22, #1
+Lloh0:
+        adrp    x21, "l_+Core.GenericMemory#9520.jit"@PAGE
+Lloh1:
+        add     x21, x21, "l_+Core.GenericMemory#9520.jit"@PAGEOFF
+        b       LBB0_3
+LBB0_2:                                 ; %L352
+                                        ;   in Loop: Header=BB0_3 Depth=1
+; │ @ /Users/shivasai/Desktop/ProtoSim_main/fin.jl:337 within `compute_sv`
+; │┌ @ range.jl:908 within `iterate`
+        add     x8, x22, #1
+; │└
+        cmp     x22, x26
+        mov     x22, x8
+        b.eq    LBB0_24
+LBB0_3:                                 ; %L21
+                                        ; =>This Loop Header: Depth=1
+                                        ;     Child Loop BB0_23 Depth 2
+                                        ;     Child Loop BB0_22 Depth 2
+; │ @ /Users/shivasai/Desktop/ProtoSim_main/fin.jl:334 within `compute_sv`
+        mov     x0, x20
+        mov     x1, x22
+        bl      _j_compute_layer_9484
+        str     x0, [sp, #32]
+; │ @ /Users/shivasai/Desktop/ProtoSim_main/fin.jl:335 within `compute_sv`
+        mov     x1, x19
+        bl      "_j_*_9486"
+; │┌ @ broadcast.jl:875 within `materialize!` @ broadcast.jl:878
+; ││┌ @ abstractarray.jl:98 within `axes`
+; │││┌ @ array.jl:194 within `size`
+        ldr     x27, [x19, #16]
+; ││└└
+; ││┌ @ broadcast.jl:305 within `instantiate`
+; │││┌ @ broadcast.jl:550 within `check_broadcast_axes`
+; ││││┌ @ abstractarray.jl:98 within `axes`
+; │││││┌ @ array.jl:194 within `size`
+        ldr     x24, [x0, #16]
+; ││││└└
+; ││││┌ @ broadcast.jl:547 within `check_broadcast_shape`
+        cmp     x27, x24
+        ccmp    x24, #1, #4, ne
+        b.ne    LBB0_25
+; %bb.4:                                ; %L57
+                                        ;   in Loop: Header=BB0_3 Depth=1
+; │└└└└
+        mov     x23, x0
+; │┌ @ broadcast.jl:875 within `materialize!` @ broadcast.jl:878
+; ││┌ @ broadcast.jl:920 within `copyto!` @ broadcast.jl:960
+        cmp     x27, x24
+        b.ne    LBB0_9
+; %bb.5:                                ; %L71
+                                        ;   in Loop: Header=BB0_3 Depth=1
+; │││ @ broadcast.jl:920 within `copyto!` @ broadcast.jl:961 @ array.jl:322 @ array.jl:299
+; │││┌ @ array.jl:302 within `_copyto_impl!`
+        cbz     x27, LBB0_2
+; %bb.6:                                ; %L77
+                                        ;   in Loop: Header=BB0_3 Depth=1
+; ││││ @ array.jl:303 within `_copyto_impl!`
+        cmp     x27, #1
+        b.lt    LBB0_26
+; %bb.7:                                ; %L154
+                                        ;   in Loop: Header=BB0_3 Depth=1
+; ││││ @ array.jl:308 within `_copyto_impl!`
+; ││││┌ @ genericmemory.jl:121 within `unsafe_copyto!`
+; │││││┌ @ int.jl:88 within `*`
+        lsl     x2, x27, #4
+; │││││└
+; │││││┌ @ cmem.jl:28 within `memmove`
+; ││││││┌ @ essentials.jl:687 within `cconvert`
+; │││││││┌ @ number.jl:7 within `convert`
+; ││││││││┌ @ boot.jl:897 within `UInt64`
+; │││││││││┌ @ boot.jl:867 within `toUInt64`
+; ││││││││││┌ @ boot.jl:756 within `check_sign_bit`
+        tbnz    x2, #63, LBB0_27
+; %bb.8:                                ; %L171
+                                        ;   in Loop: Header=BB0_3 Depth=1
+; ││││└└└└└└└
+; ││││ @ array.jl:306 within `_copyto_impl!`
+        ldr     x0, [x19]
+        ldr     x1, [x23]
+; ││││ @ array.jl:308 within `_copyto_impl!`
+; ││││┌ @ genericmemory.jl:121 within `unsafe_copyto!`
+; │││││┌ @ cmem.jl:28 within `memmove`
+        bl      _memmove
+; │││││└
+; │││││ @ genericmemory.jl:127 within `unsafe_copyto!`
+        b       LBB0_2
+LBB0_9:                                 ; %L182
+                                        ;   in Loop: Header=BB0_3 Depth=1
+; │││└└
+; │││ @ broadcast.jl:920 within `copyto!` @ broadcast.jl:964
+; │││┌ @ broadcast.jl:947 within `preprocess`
+; ││││┌ @ broadcast.jl:951 within `preprocess_args`
+; │││││┌ @ broadcast.jl:948 within `preprocess`
+; ││││││┌ @ broadcast.jl:941 within `broadcast_unalias`
+        cmp     x23, x19
+        b.eq    LBB0_14
+; %bb.10:                               ; %L185
+                                        ;   in Loop: Header=BB0_3 Depth=1
+; │││││││┌ @ abstractarray.jl:1500 within `unalias`
+; ││││││││┌ @ abstractarray.jl:1537 within `mightalias`
+        cbz     x27, LBB0_2
+; %bb.11:                               ; %L191
+                                        ;   in Loop: Header=BB0_3 Depth=1
+        cbz     x24, LBB0_20
+; %bb.12:                               ; %L197
+                                        ;   in Loop: Header=BB0_3 Depth=1
+; │││││││││┌ @ abstractarray.jl:1562 within `dataids`
+; ││││││││││┌ @ Base.jl:49 within `getproperty`
+        ldr     x8, [x19, #8]
+; ││││││││││└
+; ││││││││││ @ abstractarray.jl:1562 within `dataids` @ abstractarray.jl:1561
+        ldr     x9, [x8, #8]
+        add     x10, x8, #16
+        cmp     x10, x9
+        b.eq    LBB0_15
+; %bb.13:                               ; %guard_pass
+                                        ;   in Loop: Header=BB0_3 Depth=1
+        ldr     x9, [x8, #16]
+        cmp     x9, #0
+        csel    x9, x8, x9, eq
+        b       LBB0_16
+LBB0_14:                                ;   in Loop: Header=BB0_3 Depth=1
+        mov     x23, x19
+        b       LBB0_20
+LBB0_15:                                ;   in Loop: Header=BB0_3 Depth=1
+        mov     x9, x8
+LBB0_16:                                ; %guard_exit
+                                        ;   in Loop: Header=BB0_3 Depth=1
+        ldur    x10, [x9, #-8]
+        and     x10, x10, #0xfffffffffffffff0
+        cmp     x10, x21
+        csel    x8, x9, x8, eq
+; ││││││││││ @ abstractarray.jl:1562 within `dataids`
+; ││││││││││┌ @ Base.jl:49 within `getproperty`
+        ldr     x0, [x23, #8]
+; ││││││││││└
+; ││││││││││ @ abstractarray.jl:1562 within `dataids` @ abstractarray.jl:1561
+        ldr     x10, [x0, #8]
+        add     x11, x0, #16
+        mov     x9, x0
+        cmp     x11, x10
+        b.eq    LBB0_18
+; %bb.17:                               ; %guard_pass203
+                                        ;   in Loop: Header=BB0_3 Depth=1
+        ldr     x9, [x0, #16]
+        cmp     x9, #0
+        csel    x9, x0, x9, eq
+LBB0_18:                                ; %guard_exit204
+                                        ;   in Loop: Header=BB0_3 Depth=1
+        ldr     x8, [x8, #8]
+        ldur    x10, [x9, #-8]
+        and     x10, x10, #0xfffffffffffffff0
+        cmp     x10, x21
+        csel    x9, x9, x0, eq
+; ││││││││││┌ @ abstractarray.jl:1229 within `pointer`
+; │││││││││││┌ @ pointer.jl:75 within `unsafe_convert`
+; ││││││││││││┌ @ pointer.jl:30 within `convert`
+        ldr     x9, [x9, #8]
+; ││││││││└└└└└
+        cmp     x8, x9
+        b.ne    LBB0_20
+; %bb.19:                               ; %L233
+                                        ;   in Loop: Header=BB0_3 Depth=1
+; ││││││││┌ @ abstractarray.jl:1516 within `unaliascopy`
+; │││││││││┌ @ array.jl:349 within `copy`
+; ││││││││││┌ @ Base.jl:49 within `getproperty`
+        ldr     x1, [x23]
+        stp     x0, x23, [sp, #32]
+; ││││││││││└
+; ││││││││││ @ array.jl:350 within `copy`
+        mov     x2, x24
+        bl      l_jlplt_jl_genericmemory_copy_slice_9522_got.jit
+        mov     x25, x0
+; ││││││││││ @ array.jl:351 within `copy`
+; ││││││││││┌ @ boot.jl:522 within `memoryref`
+        ldr     x28, [x0, #8]
+; ││││││││││└
+; ││││││││││┌ @ Base.jl:49 within `getproperty`
+        ldr     x24, [x23, #16]
+        str     x0, [sp, #32]
+        ldr     x8, [sp, #8]                    ; 8-byte Folded Reload
+; ││││││││││└
+        ldr     x0, [x8, #16]
+        mov     w1, #800
+        mov     w2, #32
+        mov     x3, #54928
+        movk    x3, #25507, lsl #16
+        movk    x3, #1, lsl #32
+        bl      _ijl_gc_pool_alloc_instrumented
+        mov     x23, x0
+        mov     x8, #54928
+        movk    x8, #25507, lsl #16
+        movk    x8, #1, lsl #32
+        stp     x8, x28, [x0, #-8]
+        stp     x25, x24, [x0, #8]
+LBB0_20:                                ; %L247
+                                        ;   in Loop: Header=BB0_3 Depth=1
+; │││└└└└└└└
+; │││ @ broadcast.jl:920 within `copyto!` @ broadcast.jl:967
+; │││┌ @ simdloop.jl:72 within `macro expansion`
+        cmp     x27, #1
+        b.lt    LBB0_2
+; %bb.21:                               ; %L266.lr.ph
+                                        ;   in Loop: Header=BB0_3 Depth=1
+        ldr     x8, [x23]
+        ldr     x9, [x19]
+; ││││ @ simdloop.jl:77 within `macro expansion` @ broadcast.jl:968
+; ││││┌ @ broadcast.jl:605 within `getindex`
+; │││││┌ @ broadcast.jl:645 within `_broadcast_getindex`
+; ││││││┌ @ broadcast.jl:670 within `_getindex`
+; │││││││┌ @ broadcast.jl:639 within `_broadcast_getindex`
+; ││││││││┌ @ essentials.jl:917 within `getindex`
+        cmp     x24, #1
+        b.ne    LBB0_23
+LBB0_22:                                ; %L266.us
+                                        ;   Parent Loop BB0_3 Depth=1
+                                        ; =>  This Inner Loop Header: Depth=2
+; ││││└└└└└
+; ││││┌ @ array.jl:987 within `setindex!`
+        ldr     q0, [x8]
+        str     q0, [x9], #16
+; ││││└
+; ││││ @ simdloop.jl:75 within `macro expansion`
+; ││││┌ @ int.jl:83 within `<`
+        subs    x27, x27, #1
+; ││││└
+        b.ne    LBB0_22
+        b       LBB0_2
+LBB0_23:                                ; %L266
+                                        ;   Parent Loop BB0_3 Depth=1
+                                        ; =>  This Inner Loop Header: Depth=2
+; ││││ @ simdloop.jl:77 within `macro expansion` @ broadcast.jl:968
+; ││││┌ @ array.jl:987 within `setindex!`
+        ldr     q0, [x8], #16
+        str     q0, [x9], #16
+; ││││└
+; ││││ @ simdloop.jl:75 within `macro expansion`
+; ││││┌ @ int.jl:83 within `<`
+        subs    x27, x27, #1
+; ││││└
+        b.ne    LBB0_23
+        b       LBB0_2
+LBB0_24:                                ; %L363
+        ldr     x8, [sp, #24]
+        ldr     x9, [sp, #8]                    ; 8-byte Folded Reload
+        str     x8, [x9]
+; │└└└
+; │ @ /Users/shivasai/Desktop/ProtoSim_main/fin.jl:337 within `compute_sv`
+        ldp     x29, x30, [sp, #176]            ; 16-byte Folded Reload
+        ldp     x20, x19, [sp, #160]            ; 16-byte Folded Reload
+        ldp     x22, x21, [sp, #144]            ; 16-byte Folded Reload
+        ldp     x24, x23, [sp, #128]            ; 16-byte Folded Reload
+        ldp     x26, x25, [sp, #112]            ; 16-byte Folded Reload
+        ldp     x28, x27, [sp, #96]             ; 16-byte Folded Reload
+        add     sp, sp, #192
+        ret
+LBB0_25:                                ; %L41
+; │ @ /Users/shivasai/Desktop/ProtoSim_main/fin.jl:335 within `compute_sv`
+; │┌ @ broadcast.jl:875 within `materialize!` @ broadcast.jl:878
+; ││┌ @ broadcast.jl:305 within `instantiate`
+; │││┌ @ broadcast.jl:550 within `check_broadcast_axes`
+; ││││┌ @ broadcast.jl:547 within `check_broadcast_shape`
+Lloh2:
+        adrp    x0, "l_jl_global#9528.jit"@PAGE
+Lloh3:
+        add     x0, x0, "l_jl_global#9528.jit"@PAGEOFF
+        bl      _j_DimensionMismatch_9527
+        mov     x19, x0
+        str     x0, [sp, #32]
+        ldr     x8, [sp, #8]                    ; 8-byte Folded Reload
+        ldr     x0, [x8, #16]
+        mov     x20, #10368
+        movk    x20, #6510, lsl #16
+        movk    x20, #1, lsl #32
+        mov     w1, #752
+        mov     w2, #16
+        mov     x3, #10368
+        movk    x3, #6510, lsl #16
+        movk    x3, #1, lsl #32
+        bl      _ijl_gc_pool_alloc_instrumented
+        stp     x20, x19, [x0, #-8]
+        bl      _ijl_throw
+LBB0_26:                                ; %L177
+; ││└└└
+; ││┌ @ broadcast.jl:920 within `copyto!` @ broadcast.jl:961 @ array.jl:322 @ array.jl:299
+; │││┌ @ array.jl:303 within `_copyto_impl!`
+Lloh4:
+        adrp    x0, "l_jl_global#9511.jit"@PAGE
+Lloh5:
+        add     x0, x0, "l_jl_global#9511.jit"@PAGEOFF
+        bl      _j__throw_argerror_9510
+LBB0_27:                                ; %L163
+; ││││ @ array.jl:306 within `_copyto_impl!`
+        ldr     x8, [x19, #8]
+        ldr     x9, [x23, #8]
+; ││││ @ array.jl:308 within `_copyto_impl!`
+; ││││┌ @ genericmemory.jl:121 within `unsafe_copyto!`
+; │││││┌ @ cmem.jl:28 within `memmove`
+; ││││││┌ @ essentials.jl:687 within `cconvert`
+; │││││││┌ @ number.jl:7 within `convert`
+; ││││││││┌ @ boot.jl:897 within `UInt64`
+; │││││││││┌ @ boot.jl:867 within `toUInt64`
+; ││││││││││┌ @ boot.jl:756 within `check_sign_bit`
+Lloh6:
+        adrp    x10, _jl_small_typeof@GOTPAGE
+Lloh7:
+        ldr     x10, [x10, _jl_small_typeof@GOTPAGEOFF]
+Lloh8:
+        ldr     x19, [x10, #320]
+        stp     x8, x9, [sp, #48]
+        str     x19, [sp, #40]
+        mov     x0, x2
+        bl      _ijl_box_int64
+        str     x0, [sp, #32]
+Lloh9:
+        adrp    x8, "l_jl_sym#convert#9505.jit"@PAGE
+Lloh10:
+        add     x8, x8, "l_jl_sym#convert#9505.jit"@PAGEOFF
+        stp     x8, x19, [sp, #72]
+        str     x0, [sp, #88]
+Lloh11:
+        adrp    x0, "l_jl_global#9504.jit"@PAGE
+Lloh12:
+        add     x0, x0, "l_jl_global#9504.jit"@PAGEOFF
+        add     x1, sp, #72
+        mov     w2, #3
+        bl      _j1_throw_inexacterror_9503
+        brk     #0x1
+        .loh AdrpAdd    Lloh0, Lloh1
+        .loh AdrpAdd    Lloh2, Lloh3
+        .loh AdrpAdd    Lloh4, Lloh5
+        .loh AdrpAdd    Lloh11, Lloh12
+        .loh AdrpAdd    Lloh9, Lloh10
+        .loh AdrpLdrGotLdr      Lloh6, Lloh7, Lloh8
+; └└└└└└└└└└└
+                                        ; -- End function
+.set "l_jl_sym#convert#9505.jit", 4352929592
+.set "l_+Main.Base.DimensionMismatch#9530.jit", 4721617024
+.set "l_jl_global#9504.jit", 4758765840
+.set "l_jl_global#9528.jit", 4815922208
+.set "l_jl_global#9511.jit", 4828595472
+.set "l_+Core.Array#9523.jit", 5966648976
+.set "l_+Core.GenericMemory#9520.jit", 5966649104
+.set l_jlplt_jl_genericmemory_copy_slice_9522_got.jit, 4345807588
+.subsections_via_symbols
