@@ -1,168 +1,221 @@
 using LinearAlgebra
+using SparseArrays
 
-abstract type AbstractMatrixNode{T} end
+abstract type AbstractDDNode{T} end
 
-struct TerminalNode{T} <: AbstractMatrixNode{T}
-    value::T
+struct TerminalNode{T} <: AbstractDDNode{T}
+    value::Union{T, Nothing}
     dimensions::Tuple{Int,Int}
+    is_zero::Bool
 end
 
-struct InternalNode{T} <: AbstractMatrixNode{T}
-    children::Vector{AbstractMatrixNode{T}}
+struct InternalNode{T} <: AbstractDDNode{T}
+    children::Vector{AbstractDDNode{T}}
+    split_axis::Symbol  # :row, :col, :both
     dimensions::Tuple{Int,Int}
+    hash::UInt
 end
 
-struct MatrixDD{T}
-    root::AbstractMatrixNode{T}
+struct UnitaryDD{T} <: AbstractMatrix{T}
+    root::AbstractDDNode{T}
+    sparse_map::Dict{UInt,AbstractDDNode{T}}
 end
 
-function zero_node(T::Type, dims)
-    TerminalNode(zero(T), dims)
+function Base.size(u::UnitaryDD)
+    u.root.dimensions
 end
 
-function scalar_node(value::T, dims) where T
-    TerminalNode(value, dims)
-end
-
-is_terminal(node::TerminalNode) = true
-is_terminal(node::InternalNode) = false
-is_zero(node::TerminalNode) = iszero(node.value)
-is_zero(node::InternalNode) = false
-
-function MatrixDD(matrix::AbstractMatrix{T}) where T
-    MatrixDD(build_from_dense(matrix, 1:size(matrix,1), 1:size(matrix,2)))
-end
-
-function build_from_dense(matrix, rows, cols)
-    dims = (length(rows), length(cols))
-    dims == (1,1) && return TerminalNode(matrix[rows.start, cols.start], dims)
-    submatrix = view(matrix, rows, cols)
-    all(iszero, submatrix) && return zero_node(eltype(submatrix), dims)
-    first_val = submatrix[1,1]
-    all(==(first_val), submatrix) && return scalar_node(first_val, dims)
-    mr = rows.start + div(length(rows),2) - 1
-    mc = cols.start + div(length(cols),2) - 1
-    children = [
-        build_from_dense(matrix, rows.start:mr, cols.start:mc),
-        build_from_dense(matrix, rows.start:mr, (mc+1):cols.stop),
-        build_from_dense(matrix, (mr+1):rows.stop, cols.start:mc),
-        build_from_dense(matrix, (mr+1):rows.stop, (mc+1):cols.stop)
-    ]
-    InternalNode(children, dims)
-end
-
-function multiply(a::MatrixDD, b::MatrixDD)
-    a.root.dimensions[2] == b.root.dimensions[1] || throw(DimensionMismatch())
-    MatrixDD(multiply_nodes(a.root, b.root))
-end
-
-function multiply_nodes(a::TerminalNode, b::TerminalNode)
-    (is_zero(a) || is_zero(b)) && return zero_node(a.value, (a.dimensions[1], b.dimensions[2]))
-    scalar_node(a.value * b.value, (a.dimensions[1], b.dimensions[2]))
-end
-
-function multiply_nodes(a::AbstractMatrixNode, b::AbstractMatrixNode)
-    (is_zero(a) || is_zero(b)) && return zero_node(a.value, (a.dimensions[1], b.dimensions[2]))
-    is_terminal(a) && is_terminal(b) && return multiply_nodes(a, b)
-    a_children = is_terminal(a) ? expand_terminal(a) : a.children
-    b_children = is_terminal(b) ? expand_terminal(b) : b.children
-    result_dims = (a.dimensions[1], b.dimensions[2])
-    result_children = Vector{AbstractMatrixNode}(undef, 4)
-    for i in 1:2, j in 1:2
-        sum_node = zero_node(eltype(a_children[1].value), (
-            div(result_dims[1],2) + (i==2 ? rem(result_dims[1],2) : 0,
-            div(result_dims[2],2) + (j==2 ? rem(result_dims[2],2) : 0))
-        for k in 1:2
-            prod = multiply_nodes(a_children[(i-1)*2 + k], b_children[(k-1)*2 + j])
-            sum_node = add_nodes(sum_node, prod)
+function Base.getindex(u::UnitaryDD, i::Int, j::Int)
+    function _getindex(node, i, j)
+        if node isa TerminalNode
+            return node.is_zero ? zero(eltype(u)) : node.value
         end
-        result_children[(i-1)*2 + j] = sum_node
-    end
-    collapse_node(InternalNode(result_children, result_dims))
-end
-
-function kronecker(a::MatrixDD, b::MatrixDD)
-    MatrixDD(kronecker_nodes(a.root, b.root))
-end
-
-function kronecker_nodes(a::TerminalNode, b::TerminalNode)
-    scalar_node(a.value * b.value, (a.dimensions[1]*b.dimensions[1], a.dimensions[2]*b.dimensions[2]))
-end
-
-function kronecker_nodes(a::AbstractMatrixNode, b::AbstractMatrixNode)
-    (is_terminal(a) && is_terminal(b)) && return kronecker_nodes(a, b)
-    a_children = is_terminal(a) ? expand_terminal(a) : a.children
-    b_children = is_terminal(b) ? expand_terminal(b) : b.children
-    result_dims = (a.dimensions[1]*b.dimensions[1], a.dimensions[2]*b.dimensions[2])
-    result_children = AbstractMatrixNode[]
-    for a_child in a_children
-        for b_child in b_children
-            push!(result_children, kronecker_nodes(a_child, b_child))
+        
+        r, c = node.dimensions
+        if node.split_axis == :row
+            child_idx = i <= div(r,2) ? 1 : 2
+            new_i = child_idx == 1 ? i : i - div(r,2)
+            _getindex(node.children[child_idx], new_i, j)
+        elseif node.split_axis == :col
+            child_idx = j <= div(c,2) ? 1 : 2
+            new_j = child_idx == 1 ? j : j - div(c,2)
+            _getindex(node.children[child_idx], i, new_j)
+        else
+            row_child = i <= div(r,2) ? 1 : 3
+            col_child = j <= div(c,2) ? 1 : 2
+            child_idx = row_child + (col_child - 1)
+            new_i = child_idx in [1,2] ? i : i - div(r,2)
+            new_j = child_idx in [1,3] ? j : j - div(c,2)
+            _getindex(node.children[child_idx], new_i, new_j)
         end
     end
-    collapse_node(InternalNode(result_children, result_dims))
+    _getindex(u.root, i, j)
 end
 
-function multiply_vector(matrix::MatrixDD, vector)
-    matrix.root.dimensions[2] == length(vector) || throw(DimensionMismatch())
-    multiply_node_vector(matrix.root, vector)
+function UnitaryDD(matrix::AbstractMatrix{T}; ϵ=1e-9) where T
+    root = build_node(matrix, 1:size(matrix,1), 1:size(matrix,2), ϵ)
+    UnitaryDD(root, Dict{UInt,AbstractDDNode{T}}())
 end
 
-function multiply_node_vector(node::TerminalNode, vector)
-    fill(node.value * sum(vector), node.dimensions[1])
+function build_node(mat, rows, cols, ϵ)
+    r_len, c_len = length(rows), length(cols)
+    sub = view(mat, rows, cols)
+    
+    is_unitary = norm(sub'*sub - I) < ϵ
+    all_zero = all(x->abs(x)<ϵ, sub)
+    const_val = all(x≈sub[1] for x in sub) ? sub[1] : nothing
+    
+    if const_val !== nothing
+        return TerminalNode(const_val, (r_len,c_len), false)
+    elseif all_zero
+        return TerminalNode(nothing, (r_len,c_len), true)
+    end
+    
+    split_row = r_len > 1 && (c_len == 1 || r_len >= c_len)
+    split_col = c_len > 1 && !split_row
+    
+    children = AbstractDDNode{T}[]
+    if split_row
+        mid = div(r_len,2)
+        push!(children, build_node(mat, rows[1:mid], cols, ϵ))
+        push!(children, build_node(mat, rows[mid+1:end], cols, ϵ))
+        axis = :row
+    elseif split_col
+        mid = div(c_len,2)
+        push!(children, build_node(mat, rows, cols[1:mid], ϵ))
+        push!(children, build_node(mat, rows, cols[mid+1:end], ϵ))
+        axis = :col
+    else
+        r_mid = div(r_len,2)
+        c_mid = div(c_len,2)
+        push!(children, build_node(mat, rows[1:r_mid], cols[1:c_mid], ϵ))
+        push!(children, build_node(mat, rows[1:r_mid], cols[c_mid+1:end], ϵ))
+        push!(children, build_node(mat, rows[r_mid+1:end], cols[1:c_mid], ϵ))
+        push!(children, build_node(mat, rows[r_mid+1:end], cols[c_mid+1:end], ϵ))
+        axis = :both
+    end
+    
+    node = InternalNode(children, axis, (r_len,c_len), hash(children))
+    collapse!(node)
 end
 
-function multiply_node_vector(node::InternalNode, vector)
-    mid = div(length(vector),2)
-    v1 = @view vector[1:mid]
-    v2 = @view vector[mid+1:end]
-    top = multiply_node_vector(node.children[1], v1) .+ multiply_node_vector(node.children[2], v2)
-    bottom = multiply_node_vector(node.children[3], v1) .+ multiply_node_vector(node.children[4], v2)
-    vcat(top, bottom)
-end
-
-function expand_terminal(node::TerminalNode)
-    c1 = scalar_node(node.value, (div(node.dimensions[1],2), div(node.dimensions[2],2)))
-    c2 = scalar_node(node.value, (div(node.dimensions[1],2), node.dimensions[2] - div(node.dimensions[2],2)))
-    c3 = scalar_node(node.value, (node.dimensions[1] - div(node.dimensions[1],2), div(node.dimensions[2],2)))
-    c4 = scalar_node(node.value, (node.dimensions[1] - div(node.dimensions[1],2), node.dimensions[2] - div(node.dimensions[2],2)))
-    [c1, c2, c3, c4]
-end
-
-function add_nodes(a::TerminalNode, b::TerminalNode)
-    scalar_node(a.value + b.value, a.dimensions)
-end
-
-function add_nodes(a::AbstractMatrixNode, b::AbstractMatrixNode)
-    is_terminal(a) && is_terminal(b) && return add_nodes(a, b)
-    a_children = is_terminal(a) ? expand_terminal(a) : a.children
-    b_children = is_terminal(b) ? expand_terminal(b) : b.children
-    result_children = [add_nodes(a_children[i], b_children[i]) for i in 1:4]
-    collapse_node(InternalNode(result_children, a.dimensions))
-end
-
-function collapse_node(node::InternalNode)
-    all_child_values = [c.value for c in node.children if is_terminal(c)]
-    length(all_child_values) == 4 && all(==(all_child_values[1]), all_child_values) && return scalar_node(all_child_values[1], node.dimensions)
+function collapse!(node::InternalNode{T}) where T
+    unique_children = unique(node.children)
+    if length(unique_children) == 1
+        child = unique_children[1]
+        if child isa TerminalNode
+            return child
+        end
+    end
+    
+    all_zero = true
+    for c in node.children
+        if !(c isa TerminalNode) || !c.is_zero
+            all_zero = false
+            break
+        end
+    end
+    all_zero && return TerminalNode(nothing, node.dimensions, true)
+    
     node
 end
 
-function printdd(dd::MatrixDD)
-    function _print_tree(node,d=0,p="")
-        i = "  "^d
-        if is_terminal(node)
-            println(p,"T(",node.value,") [",node.dimensions[1],"×",node.dimensions[2],"]")
+function Base.:*(a::UnitaryDD{T}, b::UnitaryDD{T}) where T
+    size(a,2) == size(b,1) || throw(DimensionMismatch())
+    UnitaryDD(_mul_root(a.root, b.root))
+end
+
+function _mul_root(a::AbstractDDNode{T}, b::AbstractDDNode{T}) where T
+    a_split = a isa InternalNode ? a.split_axis : :none
+    b_split = b isa InternalNode ? b.split_axis : :none
+    
+    if a isa TerminalNode && b isa TerminalNode
+        val = a.is_zero || b.is_zero ? zero(T) : a.value * b.value
+        return TerminalNode(val, (a.dimensions[1], b.dimensions[2]), a.is_zero | b.is_zero)
+    end
+    
+    if a_split == :col && b_split == :row
+        children = AbstractDDNode{T}[]
+        for a_child in a.children
+            for b_child in b.children
+                push!(children, _mul_root(a_child, b_child))
+            end
+        end
+        new_node = InternalNode(children, :both, (a.dimensions[1], b.dimensions[2]), hash(children))
+        return collapse!(new_node)
+    end
+    
+    error("Complex splitting pattern not implemented")
+end
+
+function tensor_product(a::UnitaryDD{T}, b::UnitaryDD{T}) where T
+    UnitaryDD(_tensor_root(a.root, b.root))
+end
+
+function _tensor_root(a::AbstractDDNode{T}, b::AbstractDDNode{T}) where T
+    if a isa TerminalNode
+        a.is_zero && return TerminalNode(nothing, (a.dimensions[1]*b.dimensions[1], a.dimensions[2]*b.dimensions[2]), true)
+        return _scale_node(b, a.value)
+    end
+    
+    children = AbstractDDNode{T}[]
+    for child in a.children
+        push!(children, _tensor_root(child, b))
+    end
+    new_dims = (a.dimensions[1]*b.dimensions[1], a.dimensions[2]*b.dimensions[2])
+    InternalNode(children, a.split_axis, new_dims, hash(children)) |> collapse!
+end
+
+function _scale_node(node::AbstractDDNode{T}, factor::T) where T
+    node isa TerminalNode && return TerminalNode(node.value * factor, node.dimensions, false)
+    InternalNode([_scale_node(c, factor) for c in node.children], node.split_axis, node.dimensions, hash(node.children)) |> collapse!
+end
+
+function print_dd(u::UnitaryDD; indent=0)
+    function _print(node, level)
+        prefix = "  "^level
+        if node isa TerminalNode
+            println(prefix, node.is_zero ? "𝟎" : "𝐔(≈$(round(node.value; digits=2))", 
+                   " [$(node.dimensions[1])×$(node.dimensions[2])])")
         else
-            println(p,"I[",node.dimensions[1],"×",node.dimensions[2],"]")
-            for (k,c) in enumerate(node.children)
-                b = k < length(node.children) ? "├─ " : "└─ "
-                _print_tree(c,d+1,i*b)
+            println(prefix, "■ split:$(node.split_axis) [$(node.dimensions[1])×$(node.dimensions[2])]")
+            for c in node.children
+                _print(c, level+1)
             end
         end
     end
-    _print_tree(dd.root)
+    _print(u.root, indent)
 end
 
-Base.:*(a::MatrixDD,b::MatrixDD)=multiply(a,b)
-Base.:*(a::MatrixDD,v::AbstractVector)=multiply_vector(a,v)
-Base.:kron(a::MatrixDD,b::MatrixDD)=kronecker(a,b)
+function Base.show(io::IO, u::UnitaryDD)
+    print(io, "UnitaryDD$(size(u)) with ")
+    nnz = count(!iszero, Matrix(u))
+    print(io, "$nnz non-zero elements")
+end
+
+function contract!(u::UnitaryDD)
+    function _contract(node)
+        node isa TerminalNode && return node
+        unique_children = unique(node.children)
+        if length(unique_children) == 1
+            return unique_children[1]
+        end
+        InternalNode([_contract(c) for c in node.children], node.split_axis, node.dimensions, hash(node.children))
+    end
+    u.root = _contract(u.root) |> collapse!
+    u
+end
+
+
+# Example:
+# id = UnitaryDD(Matrix(1.0I, 4,4))
+
+# U = randn(4,4) + im*randn(4,4)
+# U /= sqrt(tr(U'*U))
+# ud = UnitaryDD(U)
+
+# result = ud * id  # Matrix multiplication
+# kron_prod = tensor_product(ud, id)  # Tensor product
+# contract!(kron_prod)  # Optimize memory
+
+# print_dd(result)
