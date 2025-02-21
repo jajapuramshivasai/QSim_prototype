@@ -35,17 +35,11 @@ end
 
 function build_from_dense(matrix, rows, cols)
     dims = (length(rows), length(cols))
-    if dims == (1,1)
-        return TerminalNode(matrix[rows.start, cols.start], dims)
-    end
+    dims == (1,1) && return TerminalNode(matrix[rows.start, cols.start], dims)
     submatrix = view(matrix, rows, cols)
-    if all(iszero, submatrix)
-        return zero_node(eltype(submatrix), dims)
-    end
+    all(iszero, submatrix) && return zero_node(eltype(submatrix), dims)
     first_val = submatrix[1,1]
-    if all(==(first_val), submatrix)
-        return scalar_node(first_val, dims)
-    end
+    all(==(first_val), submatrix) && return scalar_node(first_val, dims)
     mr = rows.start + div(length(rows),2) - 1
     mc = cols.start + div(length(cols),2) - 1
     children = [
@@ -69,9 +63,7 @@ end
 
 function multiply_nodes(a::AbstractMatrixNode, b::AbstractMatrixNode)
     (is_zero(a) || is_zero(b)) && return zero_node(a.value, (a.dimensions[1], b.dimensions[2]))
-    if is_terminal(a) && is_terminal(b)
-        return multiply_nodes(a, b)
-    end
+    is_terminal(a) && is_terminal(b) && return multiply_nodes(a, b)
     a_children = is_terminal(a) ? expand_terminal(a) : a.children
     b_children = is_terminal(b) ? expand_terminal(b) : b.children
     result_dims = (a.dimensions[1], b.dimensions[2])
@@ -98,9 +90,7 @@ function kronecker_nodes(a::TerminalNode, b::TerminalNode)
 end
 
 function kronecker_nodes(a::AbstractMatrixNode, b::AbstractMatrixNode)
-    if is_terminal(a) && is_terminal(b)
-        return kronecker_nodes(a, b)
-    end
+    (is_terminal(a) && is_terminal(b)) && return kronecker_nodes(a, b)
     a_children = is_terminal(a) ? expand_terminal(a) : a.children
     b_children = is_terminal(b) ? expand_terminal(b) : b.children
     result_dims = (a.dimensions[1]*b.dimensions[1], a.dimensions[2]*b.dimensions[2])
@@ -144,9 +134,7 @@ function add_nodes(a::TerminalNode, b::TerminalNode)
 end
 
 function add_nodes(a::AbstractMatrixNode, b::AbstractMatrixNode)
-    if is_terminal(a) && is_terminal(b)
-        return add_nodes(a, b)
-    end
+    is_terminal(a) && is_terminal(b) && return add_nodes(a, b)
     a_children = is_terminal(a) ? expand_terminal(a) : a.children
     b_children = is_terminal(b) ? expand_terminal(b) : b.children
     result_children = [add_nodes(a_children[i], b_children[i]) for i in 1:4]
@@ -155,12 +143,26 @@ end
 
 function collapse_node(node::InternalNode)
     all_child_values = [c.value for c in node.children if is_terminal(c)]
-    if length(all_child_values) == 4 && all(==(all_child_values[1]), all_child_values)
-        return scalar_node(all_child_values[1], node.dimensions)
-    end
+    length(all_child_values) == 4 && all(==(all_child_values[1]), all_child_values) && return scalar_node(all_child_values[1], node.dimensions)
     node
 end
 
-Base.:*(a::MatrixDD, b::MatrixDD) = multiply(a, b)
-Base.:*(a::MatrixDD, v::AbstractVector) = multiply_vector(a, v)
-Base.:kron(a::MatrixDD, b::MatrixDD) = kronecker(a, b)
+function printdd(dd::MatrixDD)
+    function _print_tree(node,d=0,p="")
+        i = "  "^d
+        if is_terminal(node)
+            println(p,"T(",node.value,") [",node.dimensions[1],"×",node.dimensions[2],"]")
+        else
+            println(p,"I[",node.dimensions[1],"×",node.dimensions[2],"]")
+            for (k,c) in enumerate(node.children)
+                b = k < length(node.children) ? "├─ " : "└─ "
+                _print_tree(c,d+1,i*b)
+            end
+        end
+    end
+    _print_tree(dd.root)
+end
+
+Base.:*(a::MatrixDD,b::MatrixDD)=multiply(a,b)
+Base.:*(a::MatrixDD,v::AbstractVector)=multiply_vector(a,v)
+Base.:kron(a::MatrixDD,b::MatrixDD)=kronecker(a,b)
