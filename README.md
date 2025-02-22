@@ -13,9 +13,7 @@ QSim Prototype is a high-performance quantum simulator designed for hybrid tasks
 
 ## Directory Structure
   ├── README.md
-  
   ├── LICENSE
-  
   ├── QSim_opt
   
   ├── benchmark.txt
