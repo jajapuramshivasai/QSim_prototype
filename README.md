@@ -12,16 +12,26 @@ QSim Prototype is a high-performance quantum simulator designed for hybrid tasks
 - **Custom Circuit Creation**: Allows users to define and simulate custom quantum circuits.
 
 ## Directory Structure
-  ├── README.md 
+  ├── README.md
+  
   ├── LICENSE   
+  
   ├── QSim_opt
+  
   ├── benchmark.txt
+  
   ├── circuit.jl
+  
   ├── code_native
+  
   ├── fin.jl
+  
   ├── gates.jl
+  
   ├── kronnecker_prod.jl
+  
   ├── temp2.jl
+  
   └── to_do.txt
 
 ## Modules
